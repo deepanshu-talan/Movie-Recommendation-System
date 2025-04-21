@@ -87,6 +87,13 @@ Here’s a quick peek at how the app looks:
 
 ![movie_app_1](https://github.com/user-attachments/assets/1aa15cb6-0628-4950-9b5e-bec8d170fc8b)
 
+## 🌍 Deployment
+
+This project is deployed on **Streamlit Cloud** and is accessible at:
+
+# 🎬 Movie Recommendation System
+
+[![Live App](https://img.shields.io/badge/🔗%20Live%20App-Click%20Here-brightgreen?style=for-the-badge)]([https://your-streamlit-url.streamlit.app](https://movie-recommendation-system-jvmprwocvycdvytwamk5ak.streamlit.app/))
 
 ---
 
