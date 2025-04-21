@@ -5,23 +5,19 @@ from datetime import datetime, timedelta
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# Load the optimized small dataset
 movies = pd.read_csv("Movie_Recommendations.csv")
 
-# Preprocess columns
 movies['release_date'] = pd.to_datetime(movies['release_date'], errors='coerce')
 movies['overview'] = movies['overview'].fillna("")
 movies['genre'] = movies['genre'].fillna("Unknown")
 movies['vote_average'] = pd.to_numeric(movies['vote_average'], errors='coerce')
 movies['runtime'] = pd.to_numeric(movies['runtime'], errors='coerce')
 
-# Add synthetic date_added if not available
 if 'date_added' not in movies.columns:
     import random
     from datetime import timedelta
     movies['date_added'] = [datetime.today() - timedelta(days=random.randint(0, 365)) for _ in range(len(movies))]
 
-# TF-IDF Vectorization for overview-based recommendation
 tfidf = TfidfVectorizer(stop_words='english')
 tfidf_matrix = tfidf.fit_transform(movies['overview'])
 cosine_sim = cosine_similarity(tfidf_matrix, tfidf_matrix)
@@ -71,18 +67,15 @@ def get_movie_details(title):
     }
     return details
 
-# Streamlit UI
 st.set_page_config(layout="wide")
 st.title("🎬 Smart Movie Recommendation System")
 
-# Filters
 st.sidebar.header("🔎 Filters")
 genre_filter = st.sidebar.selectbox("Genre", ["All"] + sorted(movies['genre'].unique()))
 min_year, max_year = st.sidebar.slider("Release Year", 1950, datetime.today().year, (2000, 2023))
 min_rating = st.sidebar.slider("Minimum Rating", 0.0, 10.0, 6.0)
 max_runtime = st.sidebar.slider("Maximum Runtime (min)", 60, 300, 180)
 
-# Filtered data
 filtered = movies.copy()
 if genre_filter != "All":
     filtered = filtered[filtered['genre'] == genre_filter]
@@ -93,10 +86,8 @@ filtered = filtered[
     (filtered['runtime'] <= max_runtime)
 ]
 
-# Input box
 movie_input = st.text_input("Enter a movie title:", "Inception")
 
-# Recommend button
 if st.button("Recommend"):
     details = get_movie_details(movie_input)
     if details is None:
@@ -121,7 +112,6 @@ if st.button("Recommend"):
                 with cols[i % 6]:
                     st.image(get_poster(rec), width=150, caption=rec)
 
-# 🔥 Popular Now
 st.subheader("🔥 Popular Now")
 popular = filtered.sort_values(by='popularity', ascending=False).head(6)
 cols = st.columns(6)
@@ -129,7 +119,7 @@ for i, row in enumerate(popular.itertuples()):
     with cols[i]:
         st.image(get_poster(row.original_title), width=150, caption=row.original_title)
 
-# 🆕 Just Added
+
 st.subheader("🆕 Just Added")
 recent = filtered.sort_values(by='date_added', ascending=False).head(6)
 cols = st.columns(6)
