@@ -204,44 +204,35 @@ scroll_container += "</div>"
 # Display the scroll container as HTML
 st.markdown(scroll_container, unsafe_allow_html=True)
 
-# Placeholder for movie details and recommendations
-details_placeholder = st.empty()
-recs_placeholder = st.empty()
+# Initialize session state for selected movie
+if 'selected_movie' not in st.session_state:
+    st.session_state.selected_movie = None
 
-# Listen for clicks on posters via Streamlit events (requires streamlit-events component)
-try:
-    from streamlit_events import streamlit_events
-    events = streamlit_events(
-        key="movie_tile_clicks",
-        events=["message"],
-        debounce_time=0,
-        override_height=0,
-        override_width=0,
-    )
-    if events and events[0] and 'message' in events[0]:
-        clicked_title = events[0]['message']
-        details = get_movie_details(clicked_title)
-        if details:
-            details_placeholder.subheader(f"Details for **{clicked_title}**:")
-            details_placeholder.image(get_poster(clicked_title), width=200)
-            details_placeholder.markdown(f"<span style='font-size:20px'><b>Description:</b> {details['Description']}</span>", unsafe_allow_html=True)
-            details_placeholder.markdown(f"<span style='font-size:20px'><b>Genre:</b> {details['Genre']}</span>", unsafe_allow_html=True)
-            details_placeholder.markdown(f"<span style='font-size:20px'><b>Rating:</b> {details['Rating']}</span>", unsafe_allow_html=True)
-            details_placeholder.markdown(f"<span style='font-size:20px'><b>Runtime:</b> {details['Runtime']} minutes</span>", unsafe_allow_html=True)
-            details_placeholder.markdown(f"<span style='font-size:20px'><b>Release Date:</b> {details['Release Date']}</span>", unsafe_allow_html=True)
-            details_placeholder.markdown(f"<span style='font-size:20px'><b>Popularity:</b> {details['Popularity']}</span>", unsafe_allow_html=True)
+# Function to display movie details and recommendations
+def display_movie_details(title):
+    details = get_movie_details(title)
+    if details:
+        st.subheader(f"Details for **{title}**:")
+        st.image(get_poster(title), width=200)
+        st.markdown(f"<span style='font-size:20px'><b>Description:</b> {details['Description']}</span>", unsafe_allow_html=True)
+        st.markdown(f"<span style='font-size:20px'><b>Genre:</b> {details['Genre']}</span>", unsafe_allow_html=True)
+        st.markdown(f"<span style='font-size:20px'><b>Rating:</b> {details['Rating']}</span>", unsafe_allow_html=True)
+        st.markdown(f"<span style='font-size:20px'><b>Runtime:</b> {details['Runtime']} minutes</span>", unsafe_allow_html=True)
+        st.markdown(f"<span style='font-size:20px'><b>Release Date:</b> {details['Release Date']}</span>", unsafe_allow_html=True)
+        st.markdown(f"<span style='font-size:20px'><b>Popularity:</b> {details['Popularity']}</span>", unsafe_allow_html=True)
 
-            recs = get_recommendations(clicked_title)
-            if not recs:
-                recs_placeholder.warning("No similar recommendations found.")
-            else:
-                recs_placeholder.subheader("Similar Movies Based on Keywords:")
-                cols = recs_placeholder.columns(min(len(recs), 6))
-                for i, rec in enumerate(recs):
-                    with cols[i % 6]:
-                        recs_placeholder.image(get_poster(rec), width=150, caption=rec)
-except ImportError:
-    st.warning("streamlit-events component not installed. Click functionality on movie tiles is disabled.")
+        recs = get_recommendations(title)
+        if not recs:
+            st.warning("No similar recommendations found.")
+        else:
+            st.subheader("Similar Movies Based on Keywords:")
+            cols = st.columns(min(len(recs), 6))
+            for i, rec in enumerate(recs):
+                with cols[i]:
+                    if st.button(rec, key=f"rec_{rec}_{i}"):
+                        st.session_state.selected_movie = rec
+                        st.rerun()
+                    st.image(get_poster(rec), width=150)
 
 # 🆕 Just Added (from dataset)
 st.subheader("🆕 Just Added")
