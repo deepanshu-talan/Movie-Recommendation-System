@@ -2,3 +2,4 @@ pandas
 requests
 streamlit
 scikit-learn
+streamlit-events
