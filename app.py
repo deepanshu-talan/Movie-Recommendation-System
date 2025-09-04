@@ -5,8 +5,14 @@ from datetime import datetime, timedelta
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+# ✅ Load API keys from secrets (safe for Streamlit Cloud)
+OMDB_API_KEY = st.secrets.get("OMDB_API_KEY", "")
+TMDB_API_KEY = st.secrets.get("TMDB_API_KEY", "")
+
+# ✅ Load dataset
 movies = pd.read_csv("Movie_Recommendations.csv")
 
+# Preprocessing
 movies['release_date'] = pd.to_datetime(movies['release_date'], errors='coerce')
 movies['overview'] = movies['overview'].fillna("")
 movies['genre'] = movies['genre'].fillna("Unknown")
@@ -18,39 +24,66 @@ if 'date_added' not in movies.columns:
     from datetime import timedelta
     movies['date_added'] = [datetime.today() - timedelta(days=random.randint(0, 365)) for _ in range(len(movies))]
 
+# ✅ TF-IDF vectorization
 tfidf = TfidfVectorizer(stop_words='english')
 tfidf_matrix = tfidf.fit_transform(movies['overview'])
 cosine_sim = cosine_similarity(tfidf_matrix, tfidf_matrix)
 
-# OMDB API Key (replace with your own key if needed)
-OMDB_API_KEY = "62e281d1"
-
+# ✅ Fetch poster from OMDb
 def get_poster(title):
-    if pd.isna(title) or title.strip() == "":
+    if not OMDB_API_KEY:
         return "https://via.placeholder.com/150"
-    
     try:
         url = f"http://www.omdbapi.com/?t={title}&apikey={OMDB_API_KEY}"
         data = requests.get(url).json()
         poster = data.get("Poster", "")
         if poster and poster != "N/A":
             return poster
-        else:
-            return "https://via.placeholder.com/150"
-    except Exception as e:
-        return "https://via.placeholder.com/150"
+    except:
+        pass
+    return "https://via.placeholder.com/150"
 
-
+# ✅ Get recommendations
 def get_recommendations(title):
     indices = pd.Series(movies.index, index=movies['original_title'].str.lower()).drop_duplicates()
     idx = indices.get(title.lower())
     if idx is None:
         return []
     sim_scores = list(enumerate(cosine_sim[idx]))
-    sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)[1:]
+    sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)[1:11]  # top 10
     movie_indices = [i[0] for i in sim_scores]
     return movies.iloc[movie_indices]['original_title'].tolist()
 
+# ✅ Fetch extra details from TMDB (streaming availability, cast, etc.)
+def fetch_tmdb_details(title):
+    if not TMDB_API_KEY:
+        return {}
+    try:
+        # Search movie
+        search_url = f"https://api.themoviedb.org/3/search/movie?api_key={TMDB_API_KEY}&query={title}"
+        search_data = requests.get(search_url).json()
+        if not search_data.get("results"):
+            return {}
+        movie_id = search_data["results"][0]["id"]
+
+        # Movie details
+        details_url = f"https://api.themoviedb.org/3/movie/{movie_id}?api_key={TMDB_API_KEY}&append_to_response=credits,watch/providers"
+        details = requests.get(details_url).json()
+
+        providers = details.get("watch/providers", {}).get("results", {}).get("US", {}).get("flatrate", [])
+        provider_names = [p["provider_name"] for p in providers] if providers else ["Not Available"]
+
+        cast = [c["name"] for c in details.get("credits", {}).get("cast", [])[:5]]
+
+        return {
+            "Where to Watch": provider_names,
+            "Cast": cast,
+            "TMDB Rating": details.get("vote_average", "N/A"),
+        }
+    except:
+        return {}
+
+# ✅ Local movie details
 def get_movie_details(title):
     movie = movies[movies['original_title'].str.lower() == title.lower()]
     if movie.empty:
@@ -67,6 +100,7 @@ def get_movie_details(title):
     }
     return details
 
+# ✅ Streamlit UI
 st.set_page_config(layout="wide")
 st.title("🎬 Smart Movie Recommendation System")
 
@@ -90,23 +124,31 @@ movie_input = st.text_input("Enter a movie title:", "Inception")
 
 if st.button("Recommend"):
     details = get_movie_details(movie_input)
+    tmdb_info = fetch_tmdb_details(movie_input)
+
     if details is None:
         st.warning("Movie not found.")
     else:
         st.subheader(f"Details for **{movie_input}**:")
         st.image(get_poster(movie_input), width=200)
-        st.markdown(f"<span style='font-size:20px'><b>Description:</b> {details['Description']}</span>", unsafe_allow_html=True)
-        st.markdown(f"<span style='font-size:20px'><b>Genre:</b> {details['Genre']}</span>", unsafe_allow_html=True)
-        st.markdown(f"<span style='font-size:20px'><b>Rating:</b> {details['Rating']}</span>", unsafe_allow_html=True)
-        st.markdown(f"<span style='font-size:20px'><b>Runtime:</b> {details['Runtime']} minutes</span>", unsafe_allow_html=True)
-        st.markdown(f"<span style='font-size:20px'><b>Release Date:</b> {details['Release Date']}</span>", unsafe_allow_html=True)
-        st.markdown(f"<span style='font-size:20px'><b>Popularity:</b> {details['Popularity']}</span>", unsafe_allow_html=True)
+
+        st.markdown(f"**Description:** {details['Description']}")
+        st.markdown(f"**Genre:** {details['Genre']}")
+        st.markdown(f"**Rating:** {details['Rating']}")
+        st.markdown(f"**Runtime:** {details['Runtime']} minutes")
+        st.markdown(f"**Release Date:** {details['Release Date']}")
+        st.markdown(f"**Popularity:** {details['Popularity']}")
+
+        if tmdb_info:
+            st.markdown(f"**Cast:** {', '.join(tmdb_info['Cast'])}")
+            st.markdown(f"**Where to Watch:** {', '.join(tmdb_info['Where to Watch'])}")
+            st.markdown(f"**TMDB Rating:** {tmdb_info['TMDB Rating']}")
 
         recs = get_recommendations(movie_input)
         if not recs:
             st.warning("No similar recommendations found.")
         else:
-            st.subheader("Similar Movies Based on Keywords:")
+            st.subheader("Similar Movies:")
             cols = st.columns(min(len(recs), 6))
             for i, rec in enumerate(recs):
                 with cols[i % 6]:
@@ -118,7 +160,6 @@ cols = st.columns(6)
 for i, row in enumerate(popular.itertuples()):
     with cols[i]:
         st.image(get_poster(row.original_title), width=150, caption=row.original_title)
-
 
 st.subheader("🆕 Just Added")
 recent = filtered.sort_values(by='date_added', ascending=False).head(6)
