@@ -31,17 +31,33 @@ cosine_sim = cosine_similarity(tfidf_matrix, tfidf_matrix)
 
 # ✅ Fetch poster from OMDb
 def get_poster(title):
-    if not OMDB_API_KEY:
-        return "https://via.placeholder.com/150"
-    try:
-        url = f"http://www.omdbapi.com/?t={title}&apikey={OMDB_API_KEY}"
-        data = requests.get(url).json()
-        poster = data.get("Poster", "")
-        if poster and poster != "N/A":
-            return poster
-    except:
-        pass
+    """Fetch movie poster (TMDB first, fallback to OMDb)."""
+    # ✅ Try TMDB first
+    if TMDB_API_KEY:
+        try:
+            url = f"https://api.themoviedb.org/3/search/movie?api_key={TMDB_API_KEY}&query={title}"
+            data = requests.get(url).json()
+            if data.get("results"):
+                poster_path = data["results"][0].get("poster_path")
+                if poster_path:
+                    return f"https://image.tmdb.org/t/p/w500{poster_path}"
+        except:
+            pass
+
+    # ✅ Fallback to OMDb
+    if OMDB_API_KEY:
+        try:
+            url = f"http://www.omdbapi.com/?t={title}&apikey={OMDB_API_KEY}"
+            data = requests.get(url).json()
+            poster = data.get("Poster", "")
+            if poster and poster != "N/A":
+                return poster
+        except:
+            pass
+
+    # ✅ Final fallback: placeholder
     return "https://via.placeholder.com/150"
+
 
 # ✅ Get recommendations
 def get_recommendations(title):
@@ -167,3 +183,4 @@ cols = st.columns(6)
 for i, row in enumerate(recent.itertuples()):
     with cols[i]:
         st.image(get_poster(row.original_title), width=150, caption=row.original_title)
+
