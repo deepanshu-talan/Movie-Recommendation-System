@@ -124,20 +124,13 @@ if st.button("Recommend"):
             st.warning("No similar recommendations found.")
         else:
             st.subheader("Similar Movies Based on Keywords:")
-            # Display recommendations as clickable tiles
-            recs_scroll_container = """
-            <div style="display: flex; overflow-x: auto; padding: 10px 0;">
-            """
-            for rec in recs:
-                poster_url = get_poster(rec)
-                recs_scroll_container += f"""
-                <div style="flex: 0 0 auto; margin-right: 15px; text-align: center; cursor:pointer;" onclick="window.streamlitEvents.postMessage('{rec}')">
-                    <img src="{poster_url}" alt="{rec}" style="width:150px;"/>
-                    <div style="margin-top: 5px; font-weight: bold;">{rec}</div>
-                </div>
-                """
-            recs_scroll_container += "</div>"
-            st.markdown(recs_scroll_container, unsafe_allow_html=True)
+            cols = st.columns(min(len(recs), 6))
+            for i, rec in enumerate(recs):
+                with cols[i]:
+                    if st.button(rec, key=f"input_rec_{rec}_{i}"):
+                        st.session_state.selected_movie = rec
+                        st.rerun()
+                    st.image(get_poster(rec), width=150)
 
 # Add filter button above trending section
 filter_button_clicked = st.button("Filter")
@@ -177,32 +170,18 @@ filtered = filtered[
 # 🔥 Trending (using TMDB)
 st.subheader("🔥 Trending")
 
-# Create a horizontal scroll container using HTML and CSS
-scroll_container = """
-<div style="display: flex; overflow-x: auto; padding: 10px 0;">
-"""
-
 trending_data = tmdb_api_get("trending/movie/week")
 trending_movies = trending_data['results'][:10] if trending_data else []
 
-# Use streamlit-events to capture clicks on all movie tiles (trending, just added, recommendations)
-movie_titles = [movie.get("title") for movie in trending_movies]
-
-for movie in trending_movies:
-    poster_url = get_tmdb_poster_path(movie.get("poster_path"))
-    title = movie.get("title")
-    # Each poster with title below, wrapped in a div with margin and clickable via streamlit-events
-    scroll_container += f"""
-    <div style="flex: 0 0 auto; margin-right: 15px; text-align: center; cursor:pointer;" onclick="window.streamlitEvents.postMessage('{title}')">
-        <img src="{poster_url}" alt="{title}" style="width:150px;"/>
-        <div style="margin-top: 5px; font-weight: bold;">{title}</div>
-    </div>
-    """
-
-scroll_container += "</div>"
-
-# Display the scroll container as HTML
-st.markdown(scroll_container, unsafe_allow_html=True)
+cols = st.columns(min(len(trending_movies), 10))
+for i, movie in enumerate(trending_movies):
+    with cols[i % 10]:
+        poster_url = get_tmdb_poster_path(movie.get("poster_path"))
+        title = movie.get("title")
+        if st.button(title, key=f"trending_{title}_{i}"):
+            st.session_state.selected_movie = title
+            st.rerun()
+        st.image(poster_url, width=150)
 
 # Initialize session state for selected movie
 if 'selected_movie' not in st.session_state:
@@ -237,21 +216,15 @@ def display_movie_details(title):
 # 🆕 Just Added (from dataset)
 st.subheader("🆕 Just Added")
 recent = filtered.sort_values(by='date_added', ascending=False).head(6)
-# Display Just Added as clickable tiles
-just_added_scroll_container = """
-<div style="display: flex; overflow-x: auto; padding: 10px 0;">
-"""
-for row in recent.itertuples():
-    title = row.original_title
-    poster_url = get_poster(title)
-    just_added_scroll_container += f"""
-    <div style="flex: 0 0 auto; margin-right: 15px; text-align: center; cursor:pointer;" onclick="window.streamlitEvents.postMessage('{title}')">
-        <img src="{poster_url}" alt="{title}" style="width:150px;"/>
-        <div style="margin-top: 5px; font-weight: bold;">{title}</div>
-    </div>
-    """
-just_added_scroll_container += "</div>"
-st.markdown(just_added_scroll_container, unsafe_allow_html=True)
+cols = st.columns(min(len(recent), 6))
+for i, row in enumerate(recent.itertuples()):
+    with cols[i]:
+        title = row.original_title
+        poster_url = get_poster(title)
+        if st.button(title, key=f"just_added_{title}_{i}"):
+            st.session_state.selected_movie = title
+            st.rerun()
+        st.image(poster_url, width=150)
 
 # Genre-specific columns
 genres_to_display = ['Action', 'Romance', 'Horror', 'Sci-Fi', 'Comedy']
