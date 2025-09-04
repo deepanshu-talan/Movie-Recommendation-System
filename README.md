@@ -92,7 +92,7 @@ Here’s a quick peek at how the app looks:
 This project is deployed on **Streamlit Cloud** and is accessible at:
 
 # 🎬 Movie Recommendation System
-<a href="https://movie-recommendation-system-jvmprwocvycdvytwamk5ak.streamlit.app/" target="_blank">
+<a href="https://movie-recommendation-system-jz2fgvqgm8j4zs89zoacdl.streamlit.app/" target="_blank">
   <img src="https://img.shields.io/badge/🔗%20Live%20App-Click%20Here-brightgreen?style=for-the-badge" alt="Live App"/>
 </a>
 
